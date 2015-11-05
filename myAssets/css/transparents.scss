@@ -1,0 +1,25 @@
+@import "../../css/theme/source/solarized";
+
+.reveal h2 {
+  color: $yellow;
+}
+
+.reveal .orange {
+  color: $orange;
+}
+
+.reveal .blue {
+  color: $blue;
+}
+
+.reveal .green {
+  color: $green;
+}
+
+.reveal section img {
+  margin: 15px 0;
+  background: rgba(255, 255, 255, 0.12);
+  border: 0 solid;
+  box-shadow: 0 0 0;
+}
+
