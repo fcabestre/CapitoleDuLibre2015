@@ -70,15 +70,6 @@
         </section>
 
         <section>
-            <img src="myAssets/images/xavier2.jpeg"/>
-        </section>
-
-        <section>
-            <img src="myAssets/images/ritchie&thompson2.jpeg"/>
-        </section>
-
-
-        <section>
             <h2>
                 Au menu aujourd'hui
             </h2>
@@ -92,11 +83,15 @@
                 </span>
 
                 <span class="fragment">
-                    <li>Scodec</li>
+                    <li>Du Scala</li>
                 </span>
 
                 <span class="fragment">
-                    <li>Rust</li>
+                    <li>Des codeur/décodeurs binaires</li>
+                </span>
+
+                <span class="fragment">
+                    <li>Une brêve apparition de Rust</li>
                 </span>
             </ul>
         </section>
@@ -107,14 +102,40 @@
 
         <section>
             <h2>
+                Encore une bibliothèque MQTT !
+            </h2>
+            <ul>
+                <span class="fragment">
+                    <li>Déjà plus de 70 (<span class="blue">mqtt.github.io</span>)</li>
+                </span>
+
+                <span class="fragment">
+                    <li>Java (7), C (5), Elixir, Haskell, Dart...</li>
+                </span>
+
+                <span class="fragment">
+                    <li>Scala + Akka</li>
+                </span>
+                <span class="fragment">
+                    <li>Spécification simple</li>
+                </span>
+            </ul>
+        </section>
+
+        <section>
+            <h2>
                 Et donc... MQTT
             </h2>
             <ul>
                 <span class="fragment"><li><span class="blue">M</span>essage <span class="blue">Q</span>ueuing <span class="blue">T</span>elemetry <span class="blue">T</span>ransport</li></span>
                 <span class="fragment"><li>Publish/Subscribe</li></span>
                 <span class="fragment"><li>TCP</li></span>
-                <span class="fragment"><li>Initialement IBM</li></span>
-                <span class="fragment"><li>Actuellement OASIS</li></span>
+                <span class="fragment"><li>Né en 1999</li></span>
+                <span class="fragment">
+                    <li>Andy Stanford-Clark (IBM)</li>
+                    <li>Arlen Nipper (EuroTech)</li>
+                </span>
+                <span class="fragment"><li>Depuis 2014 Standard OASIS</li></span>
                 <span class="fragment"><li>Dernière version 3.1.1</li></span>
             </ul>
 
@@ -122,10 +143,6 @@
 
         <section>
             <img src="myAssets/images/2782960.jpg"/>
-        </section>
-
-        <section>
-            <blockquote class="twitter-tweet" data-conversation="none" lang="fr"><p lang="en" dir="ltr"><a href="https://twitter.com/hseeberger">@hseeberger</a> MQTT, has it been fixed?</p>&mdash; The Klang (@viktorklang) <a href="https://twitter.com/viktorklang/status/652430395355594752">9 Octobre 2015</a></blockquote>
         </section>
 
         <section>
@@ -137,40 +154,121 @@
         </section>
 
         <section>
-            <img src="myAssets/images/hisgherOrderFunctions.jpg"/>
+            <h2>
+                Critiques
+            </h2>
+            <ul>
+                <span class="fragment"><li>Spécification imprécise...</li></span>
+                <span class="fragment"><li>... En amélioration</li></span>
+                <span class="fragment"><li>Paradoxes</li></span>
+                <span class="fragment"><li>Gaspillages</li></span>
+                <span class="fragment"><li>Qualité de service</li></span>
+            </ul>
         </section>
 
         <section>
-            <pre><code class="scala" data-trim style="font-size: 16px;">
-object ConnectFrame {
+            <h2>
+                Trames et décodeurs
+            </h2>
+            <ul>
+                <span class="fragment"><li>Protocole ⇒ Messages</li></span>
+                <span class="fragment"><li>Trames binaires</li></span>
+                <span class="fragment"><li>Codecs</li></span>
+                <span class="fragment"><li><span class="orange">Codage fastidieux</span></li></span>
+            </ul>
 
-    implicit val discriminator: Discriminator[Frame, ConnectFrame, Int] =
-                Discriminator(1)
-
-    implicit val codec: Codec[ConnectFrame] =
-
-       (headerCodec :: variableSizeBytes(remainingLengthCodec,
-        connectVariableHeaderCodec >>:~ { (hdr: ConnectVariableHeader) ⇒
-        stringCodec ::
-        conditional(hdr.willFlag, stringCodec) ::
-        conditional(hdr.willFlag, stringCodec) ::
-        conditional(hdr.userNameFlag, stringCodec) ::
-        conditional(hdr.passwordFlag, stringCodec)
-
-    })).as[ConnectFrame]
-}
-            </code></pre>
         </section>
 
         <section>
+            <h2>
+                Digression : Parser Combinators
+            </h2>
+            <ul>
+                <span class="fragment"><li>Frost & Launchburry, 1989</li></span>
+                <span class="fragment"><li>"x * 3.14" ?</li></span>
+                <span class="fragment"><li>Analyse syntaxique</li></span>
+                <span class="fragment"><li>Interpréter {x} {*} {3.14}" ?</li></span>
+                <span class="fragment"><li>Fonctions d'ordre supérieur</li></span>
+                <span class="fragment"><li><span class="green">Kombi</span> : <span class="orange">Parser</span> x <span class="orange">Parser</span> ⇒ <span class="orange">Parser</span></li></span>
+            </ul>
+        </section>
+        <section>
+            <img src="myAssets/images/combine.jpg"/>
+        </section>
+
+        <section>
+            <img src="myAssets/images/Scodec.png"/>
+        </section>
+
+        <section>
+            <h2>
+                Scodec
+            </h2>
+            <ul>
+                <span class="fragment"><li>Michael Pilquist (<span class="blue">@mpilquist</span>)</li></span>
+                <span class="fragment"><li><span class="green">scodec-bits</span></li></span>
+                <span class="fragment"><li>Types de base : <span class="orange">BitVector</span> et <span class="orange">ByteVector</span></li></span>
+                <span class="fragment"><li><span class="green">scodec-core</span></li></span>
+                <span class="fragment"><li>Codecs de base : <span class="green">uint16</span>, <span class="green">bool</span>, <span class="green">utf8</span>...</li></span>
+                <span class="fragment"><li>Combinateurs : <span class="green">>>~</span>, <span class="green">~</span>,...</li></span>
+            </ul>
+
+        </section>
+
+        <section>
+            <h2>
+                Exemples simples
+            </h2>
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+val qosCodec = uint2
+val keepAliveCodec = uint16
+val stringCodec = variableSizeBytes(uint16, utf8)
+                </code></pre>
+            </span>
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+val headerCodec = (bool :: qosCodec :: bool).as[Header]
+                </code></pre>
+            </span>
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+/**
+* This is the, once for all encoded, protocol name [MQIsdp] and protocol version [3]
+*/
+val connectVariableHeaderFixedBytes: BitVector = BitVector(hex"00064D514973647003")
+
+val connectVariableHeaderCodec = (
+    constant(connectVariableHeaderFixedBytes) :~>:
+        bool :: bool :: bool :: qosCodec ::
+        bool :: bool :: ignore(1) :~>: keepAliveCode
+).as[ConnectVariableHeader]
+                </code></pre>
+            </span>
+        </section>
+
+        <section>
+            <h2>
+                Un peu plus complexe
+            </h2>
             <pre><code class="scala" data-trim style="font-size: 16px;">
-val codec: Codec[PubackFrame] = (
-        headerCodec :: variableSizeBytes(
-                remainingLengthCodec, messageIdCodec
-        )
-).as[PubackFrame]
+val discriminator: Discriminator[Frame, ConnectFrame, Int] =
+            Discriminator(1)
+
+val codec: Codec[ConnectFrame] =
+
+   (headerCodec :: variableSizeBytes(remainingLengthCodec,
+    connectVariableHeaderCodec >>:~ { (hdr: ConnectVariableHeader) ⇒
+    stringCodec ::
+    conditional(hdr.willFlag, stringCodec) ::
+    conditional(hdr.willFlag, stringCodec) ::
+    conditional(hdr.userNameFlag, stringCodec) ::
+    conditional(hdr.passwordFlag, stringCodec)
+
+})).as[ConnectFrame]
             </code></pre>
         </section>
+
 
         <section>
             <pre><code class="scala" data-trim style="font-size: 16px;">
@@ -211,15 +309,46 @@ final class RemainingLengthCodec extends Codec[Int] {
         </section>
 
         <section>
-            <img src="myAssets/images/Nom.png"/>
+            <h2>
+                Usages
+            </h2>
+            <ul>
+                <span class="fragment"><li>Exemples UDP, MPEG, libpcap</li></span>
+                <span class="fragment"><li>Brendan McAdams, <span class="green">HammerSmith</span></li></span>
+                <span class="fragment"><li>Verizon, <span class="green">Remotely</span></li></span>
+                <span class="fragment"><li>Travis Brown, <span class="green">Finagle</span> </li></span>
+            </ul>
         </section>
 
         <section>
-            <img src="myAssets/images/combine.jpg"/>
+            <h2>
+                Scala ! Soyons sérieux !
+            </h2>
+            <ul>
+                <span class="fragment"><li>Complexité & Lourdeur</li></span>
+                <span class="fragment"><li>Embarqué, oui mais...</li></span>
+                <span class="fragment"><li>... Infrastructures aussi</li></span>
+                <span class="fragment"><li>Ce n'est pas que Scala</li></span>
+            </ul>
         </section>
 
-    </div>
+        <section>
+            <h2>
+                Rust à la rescousse
+            </h2>
+            <ul>
+                <span class="fragment"><li>Devoxx 2015</li></span>
+                <span class="fragment"><li>Geoffroy Croupie (<span class="blue">@gcroupie</span>)</li></span>
+                <span class="fragment"><li><span class="green">De l'API au protocole</span></li></span>
+                <span class="fragment"><li>Rust</li></span>
+                <span class="fragment"><li><span class="orange">Nom</span></li></span>
+            </ul>
+        </section>
 
+        <section>
+            <img src="myAssets/images/Nom.png"/>
+        </section>
+    </div>
 </div>
 
 <script src="lib/js/head.min.js"></script>
