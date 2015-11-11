@@ -46,12 +46,178 @@
         </section>
 
         <section>
+            <h2>
+                Qui suis-je ?
+            </h2>
+            <ul>
+                <span class="fragment">
+                    <li>Un développeur</li>
+                    <li>(Mise en œuvre des) langages</li>
+                    <li style="margin-bottom:32px">Systèmes (distribués)</li>
+                </span>
+
+                <span class="fragment">
+                    <li>Telelogic - atelier de génie logiciel</li>
+                    <li> - Plateforme de «Grid computing»</li>
+                    <li style="margin-bottom:32px">OVH - PaaS IoT</li>
+                </span>
+
+                <span class="fragment">
+                    <li><img src="myAssets/images/github.svg" style="background-color:#181717; margin-bottom:0; margin-top:0; height:32px"> @fcabestre</li>
+                    <li><img src="myAssets/images/twitter.svg" style="background-color:#55ACEE; margin-bottom:0; margin-top:0; height:32px"> https://github.com/fcabestre</li>
+                </span>
+            </ul>
+        </section>
+
+        <section>
+            <img src="myAssets/images/xavier2.jpeg"/>
+        </section>
+
+        <section>
+            <img src="myAssets/images/ritchie&thompson2.jpeg"/>
+        </section>
+
+
+        <section>
+            <h2>
+                Au menu aujourd'hui
+            </h2>
+            <ul>
+                <span class="fragment">
+                    <li>Une librairie MQTT open-source</li>
+                </span>
+
+                <span class="fragment">
+                    <li>Des «parser combinators»</li>
+                </span>
+
+                <span class="fragment">
+                    <li>Scodec</li>
+                </span>
+
+                <span class="fragment">
+                    <li>Rust</li>
+                </span>
+            </ul>
+        </section>
+
+        <section>
             <img src="myAssets/images/SMQTTL.png"/>
+        </section>
+
+        <section>
+            <h2>
+                Et donc... MQTT
+            </h2>
+            <ul>
+                <span class="fragment"><li><span class="blue">M</span>essage <span class="blue">Q</span>ueuing <span class="blue">T</span>elemetry <span class="blue">T</span>ransport</li></span>
+                <span class="fragment"><li>Publish/Subscribe</li></span>
+                <span class="fragment"><li>TCP</li></span>
+                <span class="fragment"><li>Initialement IBM</li></span>
+                <span class="fragment"><li>Actuellement OASIS</li></span>
+                <span class="fragment"><li>Dernière version 3.1.1</li></span>
+            </ul>
+
+        </section>
+
+        <section>
+            <img src="myAssets/images/2782960.jpg"/>
+        </section>
+
+        <section>
+            <blockquote class="twitter-tweet" data-conversation="none" lang="fr"><p lang="en" dir="ltr"><a href="https://twitter.com/hseeberger">@hseeberger</a> MQTT, has it been fixed?</p>&mdash; The Klang (@viktorklang) <a href="https://twitter.com/viktorklang/status/652430395355594752">9 Octobre 2015</a></blockquote>
+        </section>
+
+        <section>
+            <img src="myAssets/images/klang2.png"/>
+        </section>
+
+        <section>
+            <img src="myAssets/images/Vasters.png"/>
+        </section>
+
+        <section>
+            <img src="myAssets/images/hisgherOrderFunctions.jpg"/>
+        </section>
+
+        <section>
+            <pre><code class="scala" data-trim style="font-size: 16px;">
+object ConnectFrame {
+
+    implicit val discriminator: Discriminator[Frame, ConnectFrame, Int] =
+                Discriminator(1)
+
+    implicit val codec: Codec[ConnectFrame] =
+
+       (headerCodec :: variableSizeBytes(remainingLengthCodec,
+        connectVariableHeaderCodec >>:~ { (hdr: ConnectVariableHeader) ⇒
+        stringCodec ::
+        conditional(hdr.willFlag, stringCodec) ::
+        conditional(hdr.willFlag, stringCodec) ::
+        conditional(hdr.userNameFlag, stringCodec) ::
+        conditional(hdr.passwordFlag, stringCodec)
+
+    })).as[ConnectFrame]
+}
+            </code></pre>
+        </section>
+
+        <section>
+            <pre><code class="scala" data-trim style="font-size: 16px;">
+val codec: Codec[PubackFrame] = (
+        headerCodec :: variableSizeBytes(
+                remainingLengthCodec, messageIdCodec
+        )
+).as[PubackFrame]
+            </code></pre>
+        </section>
+
+        <section>
+            <pre><code class="scala" data-trim style="font-size: 16px;">
+final class RemainingLengthCodec extends Codec[Int] {
+
+    val MinValue = 0
+    val MaxValue = 268435455
+
+    def sizeBound = SizeBound.bounded(8, 32)
+
+    def decode(bits: BitVector): Attempt[DecodeResult[Int]] = {
+        @annotation.tailrec
+        def decodeAux(step: Attempt[DecodeResult[Int]], factor: Int, depth: Int, value: Int): Attempt[DecodeResult[Int]] =
+            if (depth == 4) failure(Err("The remaining length must be 4 bytes long at most"))
+            else step match {
+                case f: Failure ⇒ f
+                case Successful(d) ⇒
+                if ((d.value & 128) == 0) successful(DecodeResult(value + (d.value & 127) * factor, d.remainder))
+                else decodeAux(uint8.decode(d.remainder), factor * 128, depth + 1, value + (d.value & 127) * factor)
+            }
+        decodeAux(uint8.decode(bits), 1, 0, 0)
+    }
+
+    def encode(value: Int): Attempt[BitVector] = {
+        @annotation.tailrec
+        def encodeAux(value: Int, digit: Int, bytes: ByteVector): ByteVector =
+            if (value == 0) bytes :+ digit.asInstanceOf[Byte]
+            else encodeAux(value / 128, value % 128, bytes :+ (digit | 0x80).asInstanceOf[Byte])
+            if (value < MinValue || value > MaxValue) failure(Err(s"The remaining length must be in the range [$MinValue..$MaxValue], $value is not valid"))
+            else successful(BitVector(encodeAux(value / 128, value % 128, ByteVector.empty)))
+    }
+}
+            </code></pre>
+        </section>
+
+        <section>
+            <img class="cachet" src="myAssets/images/cachets.png"/>
         </section>
 
         <section>
             <img src="myAssets/images/Nom.png"/>
         </section>
+
+        <section>
+            <img src="myAssets/images/combine.jpg"/>
+        </section>
+
     </div>
 
 </div>
@@ -71,8 +237,14 @@
 
         transition: 'none', // none/fade/slide/convex/concave/zoom
 
+        math: {
+            mathjax: 'https://cdn.mathjax.org/mathjax/latest/MathJax.js',
+            config: 'TeX-AMS_HTML-full'  // See http://docs.mathjax.org/en/latest/config-files.html
+        },
+
         // Optional reveal.js plugins
         dependencies: [
+            { src: 'plugin/math/math.js', async: true },
             {
                 src: 'lib/js/classList.js', condition: function () {
                 return !document.body.classList;
