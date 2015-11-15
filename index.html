@@ -216,96 +216,183 @@
         </section>
 
         <section>
-            <h2>
-                Exemples simples
-            </h2>
+            <h2>Simples codecs</h2>
+
             <span class="fragment">
                 <pre><code class="scala" data-trim style="font-size: 16px;">
-val qosCodec = uint2
-val keepAliveCodec = uint16
-val stringCodec = variableSizeBytes(uint16, utf8)
+val qosCodec: Codec[Int] = uint2
                 </code></pre>
             </span>
+
             <span class="fragment">
                 <pre><code class="scala" data-trim style="font-size: 16px;">
-val headerCodec = (bool :: qosCodec :: bool).as[Header]
+scala> qosCodec.decode(bin"10")
+res0: scodec.Attempt[scodec.DecodeResult[Int]] =
+             Successful(DecodeResult(2,BitVector(empty)))
+
+scala> qosCodec.decode(bin"1")
+res1: scodec.Attempt[scodec.DecodeResult[Int]] =
+             Failure(cannot acquire 2 bits from a vector that contains 1 bits)
                 </code></pre>
             </span>
+
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+                scala> qosCodec.encode(3)
+res2: scodec.Attempt[scodec.bits.BitVector] =
+             Successful(BitVector(2 bits, 0xc))
+
+scala> qosCodec.encode(6)
+res3: scodec.Attempt[scodec.bits.BitVector] =
+             Failure(6 is greater than maximum value 3 for 2-bit unsigned integer)
+                </code></pre>
+            </span>
+        </section>
+
+        <section>
+            <h2>Simples codecs (suite)</h2>
+
             <span class="fragment">
                 <pre><code class="scala" data-trim style="font-size: 16px;">
 /**
-* This is the, once for all encoded, protocol name [MQIsdp] and protocol version [3]
-*/
-val connectVariableHeaderFixedBytes: BitVector = BitVector(hex"00064D514973647003")
+ * Codec for 16-bit unsigned big-endian integers.
+ * @group numbers
+ */
+val uint16: Codec[Int] = new IntCodec(16, false, ByteOrdering.BigEndian)
 
-val connectVariableHeaderCodec = (
-    constant(connectVariableHeaderFixedBytes) :~>:
-        bool :: bool :: bool :: qosCodec ::
-        bool :: bool :: ignore(1) :~>: keepAliveCode
-).as[ConnectVariableHeader]
+val messageIdCodec: Codec[Int] = uint16
+                </code></pre>
+            </span>
+
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+scala> messageIdCodec.decode(hex"002ACAFEBABE".bits)
+res0: scodec.Attempt[scodec.DecodeResult[Int]] =
+             Successful(DecodeResult(42,BitVector(32 bits, 0xcafebabe)))
+
+scala> messageIdCodec.encode(4219)
+res1: scodec.Attempt[scodec.bits.BitVector] =
+             Successful(BitVector(16 bits, 0x107b))
                 </code></pre>
             </span>
         </section>
 
         <section>
-            <h2>
-                Un peu plus complexe
-            </h2>
+            <h2>Combinateurs</h2>
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+val stringCodec = variableSizeBytes(uint16, utf8)
+                </code></pre>
+            </span>
+
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+/**
+ * Byte equivalent of [[variableSizeBits]].
+ * @param size codec that encodes/decodes the size in bytes
+ * @param value codec the encodes/decodes the value
+ * @param sizePadding number of bytes to add to the size before
+ *    encoding (and subtract from the size before decoding)
+ * @group combinators
+ */
+def variableSizeBytes[A](size: Codec[Int],
+                         value: Codec[A],
+                         sizePadding: Int = 0): Codec[A] = ...
+                </code></pre>
+            </span>
+
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+scala> stringCodec.encode("MQTT")
+res2: scodec.Attempt[scodec.bits.BitVector] =
+             Successful(BitVector(48 bits, 0x00044d515454))
+
+scala> stringCodec.decode(hex"00064d515454".bits)
+res3: scodec.Attempt[scodec.DecodeResult[String]] =
+             Failure(cannot acquire 48 bits from a vector that contains 32 bits)
+                </code></pre>
+            </span>
+        </section>
+
+        <section>
+            <h2>Projections</h2>
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+val headerCodec = (bool :: qosCodec :: bool).as[Header]
+
+case class Header(
+    dup: Boolean = false,
+    qos: Int = AtMostOnce.enum,
+    retain: Boolean = false
+)
+                </code></pre>
+            </span>
+
+            <span class="fragment">
+                <pre><code class="scala" data-trim style="font-size: 16px;">
+scala> Codec[Header].decode(bin"1100110011")
+res0: scodec.Attempt[scodec.DecodeResult[net.sigusr.mqtt.impl.frames.Header]] =
+             Successful(DecodeResult(Header(true,2,false),BitVector(6 bits, 0xcc)))
+                </code></pre>
+            </span>
+
+        </section>
+
+        <section>
+            <h2>Un exemple complet</h2>
+            <ul>
+                <span class="fragment"><li>Desinscription d'un topic</li></span>
+            </ul>
+            <p><span class="fragment"><img src="myAssets/images/packet.png"></span>
+        </section>
+
+        <section>
+            <h2>Un exemple complet (suite)</h2>
             <pre><code class="scala" data-trim style="font-size: 16px;">
-val discriminator: Discriminator[Frame, ConnectFrame, Int] =
-            Discriminator(1)
+case class UnsubscribeFrame(
+                header: Header,
+                messageIdentifier: Int,
+                topics: Vector[String]
+) extends Frame
 
-val codec: Codec[ConnectFrame] =
+val codec: Codec[UnsubscribeFrame] = (
+    headerCodec ::
+        variableSizeBytes(
+        remainingLengthCodec, messageIdCodec :: vector(stringCodec)
+    )
+).as[UnsubscribeFrame]
 
-   (headerCodec :: variableSizeBytes(remainingLengthCodec,
-    connectVariableHeaderCodec >>:~ { (hdr: ConnectVariableHeader) ⇒
-    stringCodec ::
-    conditional(hdr.willFlag, stringCodec) ::
-    conditional(hdr.willFlag, stringCodec) ::
-    conditional(hdr.userNameFlag, stringCodec) ::
-    conditional(hdr.passwordFlag, stringCodec)
-
-})).as[ConnectFrame]
+val discriminator: Discriminator[Frame, UnsubscribeFrame, Int] = Discriminator(10)
             </code></pre>
         </section>
 
-
         <section>
-            <pre><code class="scala" data-trim style="font-size: 16px;">
+            <h2>Et si c'est pas prévu ?</h2>
+            <span class="fragment"><img src="myAssets/images/remainingL.png"/></span>
+            <span class="fragment"><pre><code class="scala" data-trim style="font-size: 16px;"></span>
 final class RemainingLengthCodec extends Codec[Int] {
 
-    val MinValue = 0
-    val MaxValue = 268435455
+    def decode(bits: BitVector): Attempt[DecodeResult[Int]] = { ... }
 
-    def sizeBound = SizeBound.bounded(8, 32)
-
-    def decode(bits: BitVector): Attempt[DecodeResult[Int]] = {
-        @annotation.tailrec
-        def decodeAux(step: Attempt[DecodeResult[Int]], factor: Int, depth: Int, value: Int): Attempt[DecodeResult[Int]] =
-            if (depth == 4) failure(Err("The remaining length must be 4 bytes long at most"))
-            else step match {
-                case f: Failure ⇒ f
-                case Successful(d) ⇒
-                if ((d.value & 128) == 0) successful(DecodeResult(value + (d.value & 127) * factor, d.remainder))
-                else decodeAux(uint8.decode(d.remainder), factor * 128, depth + 1, value + (d.value & 127) * factor)
-            }
-        decodeAux(uint8.decode(bits), 1, 0, 0)
-    }
-
-    def encode(value: Int): Attempt[BitVector] = {
-        @annotation.tailrec
-        def encodeAux(value: Int, digit: Int, bytes: ByteVector): ByteVector =
-            if (value == 0) bytes :+ digit.asInstanceOf[Byte]
-            else encodeAux(value / 128, value % 128, bytes :+ (digit | 0x80).asInstanceOf[Byte])
-            if (value < MinValue || value > MaxValue) failure(Err(s"The remaining length must be in the range [$MinValue..$MaxValue], $value is not valid"))
-            else successful(BitVector(encodeAux(value / 128, value % 128, ByteVector.empty)))
-    }
+    def encode(value: Int): Attempt[BitVector] = { ... }
 }
             </code></pre>
         </section>
 
         <section>
             <img class="cachet" src="myAssets/images/cachets.png"/>
+        </section>
+
+        <section>
+            <h2>
+                Intérêts
+            </h2>
+            <ul>
+                <span class="fragment"><li>Modularité</li></span>
+                <span class="fragment"><li>Maintenable</li></span>
+                <span class="fragment"><li>Typage (fort) ⇒ sécurité</li></span>
+                <span class="fragment"><li>Performance ?</li></span>
+            </ul>
         </section>
 
         <section>
@@ -347,6 +434,13 @@ final class RemainingLengthCodec extends Codec[Int] {
 
         <section>
             <img src="myAssets/images/Nom.png"/>
+        </section>
+
+        <section>
+            <h2>En résumé / Conclusions</h2>
+        </section>
+        <section>
+            <h2>Des questions ?</h2>
         </section>
     </div>
 </div>
